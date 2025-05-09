@@ -173,7 +173,9 @@ def preprocess_data(datasets: Dict[str, Dataset], tokenizer, max_length: int = 1
         
         # Assurez-vous que les labels sont correctement formatés
         if "label" in tokenized_datasets[split].column_names:
-            tokenized_datasets[split] = tokenized_datasets[split].cast_column("label", torch.LongTensor)
+            # Ne pas utiliser cast_column avec torch.LongTensor
+            # Convertissons plutôt les labels en entiers
+            tokenized_datasets[split] = tokenized_datasets[split].with_format("torch")
     
     return tokenized_datasets
 

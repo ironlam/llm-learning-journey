@@ -13,9 +13,7 @@ import argparse
 import logging
 from typing import Dict, List, Tuple, Any, Optional, Union
 
-import torch
 import gradio as gr
-import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
@@ -119,59 +117,77 @@ def load_model(model_path: str) -> Optional[Any]:
             logger.error(f"Erreur lors du chargement du modèle par défaut: {e2}")
             return None
 
-def analyze_sentiment(text: str, sentiment_analyzer: Any) -> Tuple[Dict[str, float], Optional[Dict]]:
+def analyze_sentiment(text: str, sentiment_analyzer: Any) -> Tuple[Dict[str, float], plt.Figure]:
     """
     Analyse le sentiment du texte et retourne les scores et une visualisation.
-    
+
     Args:
         text (str): Texte à analyser
         sentiment_analyzer (Any): Pipeline d'analyse de sentiment
-        
+
     Returns:
-        Tuple[Dict[str, float], Optional[Dict]]: Les scores de sentiment et la visualisation
+        Tuple[Dict[str, float], plt.Figure]: Les scores de sentiment et la visualisation
     """
     if not text.strip():
         return {"Message": "Veuillez entrer un texte pour l'analyse."}, None
-    
+
     if sentiment_analyzer is None:
         return {"Erreur": "Le modèle n'a pas pu être chargé. Veuillez réessayer."}, None
-    
+
     # Analyser le sentiment
     try:
         result = sentiment_analyzer(text)
-        
-        # Formater les résultats pour l'affichage
+
+        # Correspondance entre les labels techniques et labels conviviaux
+        label_mapping = {
+            "LABEL_0": "NÉGATIF",
+            "LABEL_1": "POSITIF",
+        }
+
+        # Formater les résultats pour l'affichage avec des labels conviviaux
         if isinstance(result[0], list):
             # Si le modèle retourne tous les scores
-            scores = {item["label"]: float(item["score"]) for item in result[0]}
+            scores = {}
+            for item in result[0]:
+                # Convertir le label si possible
+                friendly_label = label_mapping.get(item["label"], item["label"])
+                scores[friendly_label] = float(item["score"])
         else:
             # Si le modèle retourne seulement le meilleur score
-            scores = {result[0]["label"]: float(result[0]["score"])}
-        
-        # Créer une visualisation
+            technical_label = result[0]["label"]
+            friendly_label = label_mapping.get(technical_label, technical_label)
+            scores = {friendly_label: float(result[0]["score"])}
+
+        # Créer une visualisation avec matplotlib
         labels = list(scores.keys())
         values = list(scores.values())
-        
+
         # Déterminer la couleur en fonction du sentiment
         colors = []
         for label in labels:
-            if "POSITIVE" in label.upper() or "POS" in label.upper():
+            if label == "POSITIF" or "POSITIVE" in label:
                 colors.append("#4CAF50")  # Vert pour positif
-            elif "NEGATIVE" in label.upper() or "NEG" in label.upper():
+            elif label == "NÉGATIF" or "NEGATIVE" in label:
                 colors.append("#F44336")  # Rouge pour négatif
             else:
                 colors.append("#2196F3")  # Bleu pour neutre
-        
-        # Créer la visualisation
-        fig = {
-            "data": [{"type": "bar", "x": labels, "y": values, "marker": {"color": colors}}],
-            "layout": {
-                "title": "Analyse de sentiment",
-                "xaxis": {"title": "Sentiment"},
-                "yaxis": {"title": "Score", "range": [0, 1]},
-            }
-        }
-        
+
+        # Créer la visualisation avec matplotlib
+        fig, ax = plt.subplots(figsize=(10, 6))
+        bars = ax.bar(labels, values, color=colors)
+        ax.set_title("Analyse de sentiment")
+        ax.set_xlabel("Sentiment")
+        ax.set_ylabel("Score")
+        ax.set_ylim(0, 1)
+
+        # Ajouter les valeurs sur les barres
+        for bar in bars:
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width() / 2., height + 0.02,
+                    f'{height:.2f}', ha='center', va='bottom')
+
+        plt.tight_layout()
+
         return scores, fig
     except Exception as e:
         logger.error(f"Erreur lors de l'analyse du sentiment: {e}")
@@ -180,11 +196,11 @@ def analyze_sentiment(text: str, sentiment_analyzer: Any) -> Tuple[Dict[str, flo
 def analyze_batch(file: gr.File, sentiment_analyzer: Any) -> pd.DataFrame:
     """
     Analyse un lot de textes à partir d'un fichier CSV.
-    
+
     Args:
         file (gr.File): Fichier CSV contenant les textes à analyser
         sentiment_analyzer (Any): Pipeline d'analyse de sentiment
-        
+
     Returns:
         pd.DataFrame: DataFrame contenant les résultats de l'analyse
     """
@@ -193,26 +209,38 @@ def analyze_batch(file: gr.File, sentiment_analyzer: Any) -> pd.DataFrame:
         df = pd.read_csv(file.name)
         if "text" not in df.columns:
             return pd.DataFrame({"Erreur": ["Le fichier CSV doit contenir une colonne 'text'"]})
-        
+
+        # Correspondance entre les labels techniques et labels conviviaux
+        label_mapping = {
+            "LABEL_0": "NÉGATIF",
+            "LABEL_1": "POSITIF",
+            # Ajouter d'autres correspondances si nécessaire
+        }
+
         # Analyser les sentiments
         results = []
         for text in df["text"]:
             if not isinstance(text, str):
                 results.append({"texte": str(text), "erreur": "Le texte n'est pas une chaîne de caractères"})
                 continue
-                
+
             try:
                 result = sentiment_analyzer(text)[0]
                 if isinstance(result, list):
                     result = result[0]
+
+                # Convertir le label technique en label convivial
+                technical_label = result["label"]
+                friendly_label = label_mapping.get(technical_label, technical_label)
+
                 results.append({
                     "texte": text[:50] + "..." if len(text) > 50 else text,
-                    "sentiment": result["label"],
+                    "sentiment": friendly_label,
                     "score": result["score"]
                 })
             except Exception as e:
                 results.append({"texte": text[:50] + "...", "erreur": str(e)})
-        
+
         return pd.DataFrame(results)
     except Exception as e:
         logger.error(f"Erreur lors de l'analyse par lot: {e}")
@@ -252,7 +280,7 @@ def create_app(sentiment_analyzer: Any, theme: str = "default") -> gr.Blocks:
             Cet outil analyse le sentiment des commentaires ou textes que vous saisissez.
             Entrez simplement votre texte ci-dessous et découvrez son sentiment prédominant!
             
-            *Modèle fine-tuné dans le cadre de mon parcours d'apprentissage LLM.*
+            *Modèle fine-tuné dans le cadre d'un atelier d'apprentissage LLM.*
             """
         )
         
@@ -323,7 +351,7 @@ def create_app(sentiment_analyzer: Any, theme: str = "default") -> gr.Blocks:
             (positif/négatif). Plus le score est élevé pour une catégorie, plus le modèle est confiant 
             dans sa prédiction.
             
-            [GitHub](https://github.com/your-username/llm-learning-journey) | [Medium](https://medium.com/@diaby.lamine)
+            [GitHub](https://github.com/ironlam/llm-learning-journey) | [Medium](https://medium.com/@diaby.lamine)
             """
         )
     

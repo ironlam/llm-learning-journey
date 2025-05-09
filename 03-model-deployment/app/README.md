@@ -1,15 +1,16 @@
 ---
 sdk: gradio
-sdk_version: 3.50.2
+sdk_version: 5.29.0
 app_file: app.py
 models:
-  - ironlam/sentiment-analysis-model
-title: Analyseur de Sentiment pour Commentaires d'Articles
+  - ironlam/sentiment-analysis-french-model
+title: sentiment-analysis-french-model
 emoji: 📊
 colorFrom: blue
 colorTo: green
 pinned: true
 license: mit
+install_requirements: true
 ---
 
 # Analyseur de Sentiment pour Commentaires d'Articles

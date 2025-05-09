@@ -32,17 +32,70 @@ ENV/
 env.bak/
 venv.bak/
 
-# Model files
+# Model files and directories
 *.bin
 *.pt
 *.pth
 *.onnx
+**/final-model/
+**/checkpoint-*/
+**/sentiment-model/
+**/runs/
+**/wandb/
 
-# VSCode
+# Data files
+*.csv
+*.tsv
+*.json
+*.jsonl
+*.pkl
+*.npy
+*.npz
+# Uncomment the following if you want to keep example data in the repo
+# !data/examples/*.csv
+
+# Result files
+**/results/*.png
+**/results/*.jpg
+**/results/*.pdf
+**/results/*.svg
+
+# Logs
+logs/
+*.log
+**/lightning_logs/
+
+# Gradio specific
+flagged/
+tmp/
+gradio_cached_examples/
+
+# Hugging Face specific
+.cache/
+cached*/
+*_cache/
+.huggingface/
+
+# IDE related
 .vscode/
-
-# PyCharm
 .idea/
+*.swp
+*.swo
 
-# Mac OS
+# OS specific
 .DS_Store
+Thumbs.db
+.directory
+desktop.ini
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*~
+
+# Large files (consider using Git LFS instead)
+*.zip
+*.tar
+*.tar.gz
+*.tgz

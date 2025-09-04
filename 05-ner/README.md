@@ -6,5 +6,5 @@ Ce dossier contient le notebook et le code associés à l’article Medium :
 ## Contenu
 - `05_named_entity_recognition.ipynb` : notebook principal avec code et explications
 - `results` : dossier d'export de CSV contenant les résultats d'une analyse de texte pour la reconnaissance de NER. 
-- `README.md` : ce fichier
+
 
